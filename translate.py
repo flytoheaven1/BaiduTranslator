@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: UTF-8 -*-
 # Copyright (c) 2020 moonlightelite
-#
+# https://github.com/moonlightelite/BaiduTranslator.git
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -295,10 +295,19 @@ class BaiduTranslate():
             
             response_dict = response.json()
 
-            if "error" in response_dict.keys() and not retry:
+            if "error" in response_dict.keys():
+                print('error')
                 raise (TranslationException(response_dict))
 
-            trans = "\n".join(x for x in map(lambda x: x["dst"], response_dict["trans_result"]["data"]))
+            trans = ''
+            for data in response_dict["trans_result"]["data"]:
+                src = data["src"]
+                dst = data["dst"]
+
+                trans += src+'\n'
+                trans += dst+'\n'
+
+            trans = trans[:-1]
 
             if not self.cache[input_lang + output_lang].get(input_string, None):
                 self.cache[input_lang + output_lang][input_string] = trans
@@ -409,19 +418,22 @@ def run(args):
         print(baidu.translate(args.input, output_lang=args.output_language))
         sys.exit(0)
     elif args.filename:
-        for line in args.filename:
-            l = line.strip()
-            if not l:
-                continue
-            print(l, "\n", baidu.translate(l, output_lang=args.output_language).strip(), "\n")
-            time.sleep(1)
+        l = args.filename.read()
+        trans = baidu.translate(l, output_lang=args.output_language)
+        args.filename.close()
+
+        if args.savefilename:
+            with open(args.savefilename, 'w', encoding='utf-8') as f:
+                f.write(trans)
+        else:
+            print(trans)
         sys.exit(0)
         
 def is_valid_file(parser, arg):
     if not os.path.exists(arg):
         parser.error("The file %s does not exist!" % arg)
     else:
-        return open(arg, 'r')
+        return open(arg, 'r', encoding="utf-8")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Translation using Baidu Translate.')
@@ -434,6 +446,8 @@ if __name__ == "__main__":
     parser.add_argument("-f", dest="filename", required=False,
                     help="File to be translated", metavar="FILE",
                     type=lambda x: is_valid_file(parser, x))
+    parser.add_argument("-w", dest="savefilename", required=False,
+                    help="translated File save", metavar="FILE")                
     args = parser.parse_args()
 
     run(args)
